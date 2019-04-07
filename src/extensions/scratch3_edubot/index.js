@@ -21,6 +21,7 @@ const BLEUUID = {
     char_motor_set_step:          '34443c33-3356-11e9-b210-d663bd873d93',
     char_motor_set_speed:         '34443c34-3356-11e9-b210-d663bd873d93',
     char_motor_set_distance:      '34443c35-3356-11e9-b210-d663bd873d93',
+    char_motor_set_rotation:      '34443c40-3356-11e9-b210-d663bd873d93',
     char_motor_set_accel:         '34443c36-3356-11e9-b210-d663bd873d93',
     misc_service:                  0xe006,
     char_misc_color_led:          '34443c37-3356-11e9-b210-d663bd873d93',
@@ -291,8 +292,20 @@ class EduBot {
         send_data.push((this._max_velocity) & 0xFF);
 
         console.log(send_data);
-
         return this.send(BLEUUID.motor_service, BLEUUID.char_motor_set_distance, send_data);
+    }
+
+    setRotation (rotate_angle) {
+        var send_data = [];
+
+        send_data.push((rotate_angle >> 8) & 0xFF);
+        send_data.push((rotate_angle) & 0xFF);
+        send_data.push((this._max_velocity >> 8) & 0xFF);
+        send_data.push((this._max_velocity) & 0xFF);
+
+        console.log(send_data);
+
+        return this.send(BLEUUID.motor_service, BLEUUID.char_motor_set_rotation, send_data);
     }
 
     send (service, characteristic, value) {
@@ -800,6 +813,21 @@ class Scratch3EduBotBlocks {
                     }
                 },
                 {
+                    opcode: 'setRotation',
+                    text: formatMessage({
+                        id: 'edubot.setRotation',
+                        default: 'rotate by angle [ROTATE_ANGLE]',
+                        description: 'rotate by angle'
+                    }),
+                    blockType: BlockType.COMMAND,
+                    arguments: {
+                        ROTATE_ANGLE: {
+                            type: ArgumentType.NUMBER,
+                            defaultValue: 0
+                        }
+                    }
+                },
+                {
                     opcode: 'moveForward',
                     text: formatMessage({
                         id: 'edubot.moveForward',
@@ -1062,8 +1090,15 @@ class Scratch3EduBotBlocks {
 
     setText (args) {
         const text = String(args.TEXT).substring(0, 19);
-        if (text.length > 0)
+        if (text.length > 0) {
             this._peripheral.setText(text);
+        }
+
+        return new Promise(resolve => {
+            setTimeout(() => {
+                resolve();
+            }, 50);
+        });
     }
 
     setImage (args) {
@@ -1072,18 +1107,42 @@ class Scratch3EduBotBlocks {
         if (index >= 0 && index <= 3) {
             this._peripheral.setImage(index);
         }
+
+        return new Promise(resolve => {
+            setTimeout(() => {
+                resolve();
+            }, 50);
+        });
     }
 
     clearDisplay (args) {
         this._peripheral.setText(" ");
+
+        return new Promise(resolve => {
+            setTimeout(() => {
+                resolve();
+            }, 50);
+        });
     }
 
     setLEDLamp (args) {
         this._peripheral.setLEDLamp(args.L_COLOR, args.R_COLOR);
+
+        return new Promise(resolve => {
+            setTimeout(() => {
+                resolve();
+            }, 50);
+        });
     }
 
     turnOffLEDLamp (args) {
         this._peripheral.setLEDLamp('#000000', '#000000');
+
+        return new Promise(resolve => {
+            setTimeout(() => {
+                resolve();
+            }, 50);
+        });
     }
 
     setStep (args) {
@@ -1123,6 +1182,37 @@ class Scratch3EduBotBlocks {
         const r_dist = parseInt(args.R_DIST);
 
         this._peripheral.setDistance(l_dist, r_dist);
+
+        return new Promise(resolve => {
+            var first_check = true;
+            var ttt = setInterval(() => {
+                if(this._peripheral.isRobotMoving == false && first_check == true) {
+                    first_check = false;
+                }
+                else if(this._peripheral.isRobotMoving == false && first_check == false) {
+                    resolve();
+                    clearInterval(ttt);
+                }
+            }, 100);
+        });
+    }
+
+    setRotation (args) {
+        const rotate_angle = parseInt(args.ROTATE_ANGLE);
+        this._peripheral.setRotation(rotate_angle);
+
+        return new Promise(resolve => {
+            var first_check = true;
+            var ttt = setInterval(() => {
+                if(this._peripheral.isRobotMoving == false && first_check == true) {
+                    first_check = false;
+                }
+                else if(this._peripheral.isRobotMoving == false && first_check == false) {
+                    resolve();
+                    clearInterval(ttt);
+                }
+            }, 100);
+        });
     }
 
     moveForward (args) {
